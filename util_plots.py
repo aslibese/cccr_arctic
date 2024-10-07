@@ -1,5 +1,12 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Name: Asli Bese
+
+"""
+Created on 04 Oct 2024
+
+This script contains the utility functions for plotting Arctic warming data.
+
+"""
 
 import numpy as np   
 import matplotlib.pyplot as plt  
@@ -9,9 +16,11 @@ import cartopy.crs as ccrs # crs: coordinate reference system
 from cartopy.util import add_cyclic_point
 
 
-# function to create a customized background plot 
-def plot_background(ax, lower_boundary):
 
+def plot_background(ax, lower_boundary):    
+	"""
+    Function to create a customized background plot.
+    """
 	# set the background colour of the plot area to white 
 	ax.patch.set_facecolor('w')
 	# change the border of the plot to black 
@@ -43,8 +52,10 @@ def plot_background(ax, lower_boundary):
 	return ax
 
 
-# function to plot the Arctic temperature trend as a polar map
 def plot_average_ArcticTrend(ds, lower_boundary, add_colorbar=True, ax=None):
+	"""
+    Function to plot the Arctic temperature trend as a polar map.
+    """
 	# set up colour range and levels for the countour plot 
 	cmin = -1.5 # min countour level (min value of the temperature anomaly trends to display)
 	cmax = 1.5 # max countour level
@@ -71,8 +82,10 @@ def plot_average_ArcticTrend(ds, lower_boundary, add_colorbar=True, ax=None):
 	cbar.set_ticks(labels)
 	
    
-# function to plot the Arctic Amplification (AA) as a polar map
 def plot_average_AA(ds, lower_boundary, ax=None):
+	"""
+    Function to plot the Arctic Amplification (AA) as a polar map.
+    """
 	# generate base colourmaps
 	Reds = cm.get_cmap('Reds', 12) # make 12 discrete shades of red 
 	Blues = cm.get_cmap('Blues', 10) # make 10 discrete shades of blue
