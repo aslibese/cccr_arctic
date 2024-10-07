@@ -22,7 +22,7 @@ from pathlib import Path
 
 def main():
     home = Path("~").expanduser()
-    obs_ave_filepath = home.joinpath("my_dir", "cccr/obs_ave.nc")
+    obs_ave_filepath = home.joinpath("data_dir", "OBS_DATA/processed/obs_ave.nc")
     
     ds = xr.open_dataset(obs_ave_filepath)
     ds = fix_coords(ds)
@@ -87,7 +87,7 @@ def main():
     plt.tick_params(axis='both', labelsize=16)
     plt.xlim(1950, 2025)
 
-    output_dir = home.joinpath("my_dir", "cccr/figures")
+    output_dir = home.joinpath("my_dir", "cccr_arctic/figures")
     plt.savefig(f'{output_dir}/obs_time_series.png', dpi=300)
 
 
