@@ -1,89 +1,84 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Name: Asli Bese
 
-# import the functions from ArcticWarmingUtilities.py
-from ArcticWarmingUtilitiesCanada import selectPeriod, find_variable_by_dims, annualMean, performLinearRegression, gridCellRegression, weightedAverage
+"""
+Created on 04 Oct 2024
+
+This script contains the utility functions for processing Arctic warming data.
+
+"""
 
 import numpy as np  
 import xarray as xr 
-import argparse # to handle command line arguments
-import os
-
-parser = argparse.ArgumentParser(description='A program that requires a data file name.')
-parser.add_argument('filename', type=str, help='Name of the data file')
-
-args = parser.parse_args()
-
-print("Processing data file:", args.filename)
-
-# extract directory and base filename
-input_directory = os.path.dirname(args.filename)
-base_filename = os.path.basename(args.filename)
-
-# remove file extension from base filename
-filename_without_ext, _ = os.path.splitext(base_filename)
-
-# open the dataset
-ds = xr.open_dataset(args.filename)
-
-# specify the start_year and end_year for the period of interest 
-start_year = 1979
-end_year = 2021
-
-# extract based on the period interest
-ds_with_period = selectPeriod(ds, start_year, end_year)
-
-# define acceptable dimensions
-acceptable_dims = [
-	{'time', 'lat', 'lon'},
-	{'time', 'latitude', 'longitude'}
-]
-
-# use the function to find the variable for temperature anomaly
-var_name = find_variable_by_dims(ds_with_period, acceptable_dims)
-
-if var_name is None:
-	raise ValueError("No variable with the required dimensions found.")
-else:
-	print("Variable selected for processing: ", var_name)
+import scipy.stats as st
+import pandas as pd
 
 
-# take the annual mean of temperature anomalies
-ds_with_annualMean = annualMean(ds_with_period, var_name)
-
-# compute the weighted average and the global warming trend
-weighted_average = weightedAverage(ds_with_annualMean)
-global_trend, _, gt_pvalue = performLinearRegression(weighted_average.values)
-
-print("Global warming trend during ", str(start_year), "-", str(end_year), " is ", str(np.round(global_trend,3)), " with a p-value of ", str(np.round(gt_pvalue,3)))
-
-# perform linear regression and compute slope and p_value for each grid cell 
-ds_processed = gridCellRegression(ds_with_annualMean)
-
-# FOR TREND
-# make a copy of the dataset, this is needed to plot Arctic temperature trend
-# and mask out grid cells where the p-value is statistically non-significant (>= 0.05)
-ds_trend_masked = ds_processed.copy()
-ds_trend_masked['slope'] = ds_trend_masked['slope'].where(ds_trend_masked['p_value'] < 0.05, np.nan)
-
-# construct the output file path
-trend_output_file_path = os.path.join(input_directory, "{}_2021_trendMasked.nc".format(filename_without_ext))
-
-# save the processed dataset
-ds_trend_masked.to_netcdf(trend_output_file_path)
-
-print("Processed trend masked data saved to:", trend_output_file_path)
+def fix_coords(ds):
+    """
+    Function to rename latitude and longitude coordinates, and convert date to datetime format and rename to time.
+    """
+    if 'latitude' in ds.coords and 'longitude' in ds.coords:
+        ds = ds.rename({'latitude': 'lat', 'longitude': 'lon'})
+    
+    if 'date' in ds.coords:
+        ds['date'] = pd.to_datetime(ds['date'].astype(str), format='%Y%m%d')
+        ds = ds.rename({'date': 'time'})
+    return ds
 
 
-# FOR ARCTIC AMPLIFICATION
-# compute the amplification in each grid cell 
-ds_processed['amplification'] = ds_processed['slope'] / global_trend
+def select_region(ds, lower_boundary, upper_boundary, west_boundary, east_boundary):
+    """
+    Function to slice the dataset based on the specificed boundaries.
+    """
+    lat_dim = 'lat' if 'lat' in ds.dims else 'latitude'
+    lon_dim = 'lon' if 'lon' in ds.dims else 'longitude'
+    ds_region = ds.sel(**{lat_dim: slice(float(lower_boundary), float(upper_boundary)),
+                          lon_dim: slice(float(west_boundary), float(east_boundary))
+                          })
+    return ds_region
 
-# construct the output file path
-aa_output_file_path = os.path.join(input_directory, "{}_2021_aa.nc".format(filename_without_ext))
 
-# save the processed dataset
-ds_processed.to_netcdf(aa_output_file_path)
+def weighted_avg(data, lat_bound_s=-90, lat_bound_n=90, lon_bound_w=0, lon_bound_e=360):
+    """
+    Function to compute the spatial average while weighting for cos(latitude).
+    """
+    # constrain area of interest and take zonal mean
+    data = data.sel(lat=slice(lat_bound_s, lat_bound_n), lon=slice(lon_bound_w, lon_bound_e))
+    zonal_mean = data.mean(dim='lon')
 
-print("Processed Arctic Amplification data saved to:", aa_output_file_path)
+    # compute latitude weights
+    weights = np.cos(np.deg2rad(data.lat)) / np.cos(np.deg2rad(data.lat)).sum()
 
+    # compute the weighted average across latitudes
+    avg = (zonal_mean * weights).sum(dim='lat')
+
+    return avg
+
+
+def perform_linear_regression(data):
+    """
+    Function to perform linear regression.
+    """
+    x = np.arange(len(data))
+    slope, intercept, r_value, p_value, std_err = st.linregress(x, data)
+    return slope, intercept, p_value
+
+
+def apply_grid_cell_regression(da):
+    """
+    Function to perform linear regression for each grid cell and return slopes and p-values.
+    """
+    result = xr.apply_ufunc(
+        perform_linear_regression, 
+        da, 
+        vectorize=True, 
+        dask='parallelized', 
+        input_core_dims=[['year']], 
+        output_core_dims=[[], [], []], 
+        output_dtypes=['float64', 'float64', 'float64']
+    )
+
+    slope = result[0]
+    p_value = result[2]
+    return slope, p_value
