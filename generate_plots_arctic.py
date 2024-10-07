@@ -1,138 +1,146 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Name: Asli Bese
 
-from Canada.plotObsAverageCanada import plot_average_ArcticTrend, plot_average_AA
-from Canada.ArcticWarmingUtilitiesCanada import selectPeriod, find_variable_by_dims, annualMean, selectRegion, performLinearRegression, weightedAverage
+"""
+Created on 04 Oct 2024
+
+This script computes the Arctic temperature trend and amplification for the periods 1950-2023 and 1979-2023 using the average of four observational datasets
+and creates a time series plot and polar trend and amplification plots.
+
+"""
+
+from util_arctic import fix_coords, weighted_avg, perform_linear_regression, apply_grid_cell_regression
+from util_plots import plot_average_ArcticTrend, plot_average_AA
 
 import numpy as np  
 import xarray as xr 
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
-import matplotlib.lines as mlines
 import cartopy.crs as ccrs # crs: coordinate reference system
+from pathlib import Path
 
-# set up the figure using GridSpec for a grid layout
-fig = plt.figure(figsize=(10, 10), constrained_layout=False)
-gs = GridSpec(2, 2, height_ratios=[1, 1], width_ratios=[1, 1], hspace=0.3, wspace=0.3)
 
-# a) TOP: TIME SERIES
-# open the individual observational datasets
-BerkeleyEarth = xr.open_dataset('data/BerkeleyEarth_anom.nc')
-HadCRUT5 = xr.open_dataset('data/HadCRUT5_anom.nc')
-Gistemp = xr.open_dataset('data/gistemp_anom.nc')
-ERA5 = xr.open_dataset('data/new_era5_anom.nc')
-
-obs_ds = [BerkeleyEarth, HadCRUT5, Gistemp, ERA5]
-
-# define acceptable dimensions
-acceptable_dims = [
-	{'time', 'lat', 'lon'},
-	{'time', 'latitude', 'longitude'}
-]
-
-# define boundaries for Canada
-canada_lower = 41.68  
-canada_upper = 83.11  
-canada_west = 360.0-141.00  
-canada_east = 360.0-52.62 
-
-# define boundaries for the Canadian Arctic
-arctic_lower = 66.5
-arctic_upper = 90.0
-arctic_west = 0 #360.0-141.0
-arctic_east = 360 #360.0-52.62
-
-labels = ['Berkeley Earth', 'HadCRUT5', 'Gistemp', 'ERA5']
-colours = ['b', 'r', 'y', 'g']
-global_alpha, canada_alpha, arctic_alpha = 0.2, 0.6, 1
-canada_linestyle, arctic_linestyle = ':', '-.'
-
-ax1 = fig.add_subplot(gs[0, :])
-print("Plotting subplot (a)...\n")
-
-for i in range(4): 
-    print("Analyzing and plotting: " + labels[i] + "\n")
-
-    # select the dataset for the period interest
-    ds = selectPeriod(obs_ds[i], 1950, 2023)
-
-    # use the function to find the variable for temperature anomaly
-    var_name = find_variable_by_dims(obs_ds[i], acceptable_dims)
-
-    # take the annual mean of temperature anomalies
-    ds_with_annualMean = annualMean(ds, var_name)
-
-    # FOR GLOBAL 
-    global_weighted_ave = weightedAverage(ds_with_annualMean)
-
-    global_selected_per = global_weighted_ave.sel(year = slice(str(1979), str(2023)))
-    global_trend, global_intercept, _ = performLinearRegression(global_selected_per.values) # Global warming trend for 1979-2023 
-    y_fit_global = np.arange(len(global_selected_per)) * global_trend + global_intercept # fitted y values
-
-    # FOR CANADA
-    #ds_canada = selectRegion(ds_with_annualMean, canada_lower, canada_upper, canada_west, canada_east) 
-    #canada_weighted_ave = weightedAverage(ds_canada) # compute the yearly weighed average for Canada
+def main():
+    home = Path("~").expanduser()
+    obs_ave_filepath = home.joinpath("my_dir", "cccr/obs_ave.nc")
     
-    #canada_selected_per = canada_weighted_ave.sel(year = slice(str(1979), str(2023)))
-    #canada_trend, canada_intercept, _ = performLinearRegression(canada_selected_per.values) # Canada warming trend for 1979-2023 
-    #y_fit_canada = np.arange(len(canada_selected_per)) * canada_trend + canada_intercept # fitted y values
+    ds = xr.open_dataset(obs_ave_filepath)
+    ds = fix_coords(ds)
 
-    # FOR CANADIAN ARCTIC 
-    ds_arctic = selectRegion(ds_with_annualMean, arctic_lower, arctic_upper, arctic_west, arctic_east) 
-    arctic_weighted_ave = weightedAverage(ds_arctic) # compute the yearly weighed average for Canadian Arctic
-    
-    arctic_selected_per = arctic_weighted_ave.sel(year = slice(str(1979), str(2023)))
-    arctic_trend, arctic_intercept, _ = performLinearRegression(arctic_selected_per.values)  # Canadian Arctic warming trend for 1979-2023 
-    y_fit_arctic = np.arange(len(arctic_selected_per)) * arctic_trend + arctic_intercept # fitted y values
-    
-    # plot the Global temperature anomaly time series and the trend line for each dataset
-    ax1.plot(global_weighted_ave.year, global_weighted_ave, color=colours[i], alpha=0.2)
-    ax1.plot(global_selected_per.year, y_fit_global, color=colours[i], alpha=0.2)
+    # define boundaries for Canada
+    canada_south = 41.68  
+    canada_north = 83.11  
+    canada_west = 360.0-141.00  
+    canada_east = 360.0-52.62 
 
-    # plot the Canada temperature anomaly time series and the trend line for each dataset
-    #ax1.plot(canada_weighted_ave.year, canada_weighted_ave, color=colours[i], alpha=0.6, linestyle=':')
-    #ax1.plot(canada_selected_per.year, y_fit_canada, color=colours[i], alpha=0.6, linestyle=':')
+    # define boundaries for the Canadian Arctic
+    ca_arc_south = 66.5
+    ca_arc_north = 83.11
+    ca_arc_west = 360.0-141.0
+    ca_arc_east = 360.0-52.62
 
-    # plot the Canadian Arctic temperature anomaly time series and the trend line for each dataset
-    ax1.plot(arctic_weighted_ave.year, arctic_weighted_ave, color=colours[i], alpha=1)
-    ax1.plot(arctic_selected_per.year, y_fit_arctic, color=colours[i], alpha=1)
+    ann_mean_temp_anom = ds['temperature'].groupby('time.year').mean('time')
 
-# add legend and labels
-#global_legend = mlines.Line2D([], [], color='k', linestyle='-', alpha=0.2, label='Global')
-#canada_legend = mlines.Line2D([], [], color='k', linestyle=':', alpha=0.6, label='Canada')
-#arctic_legend = mlines.Line2D([], [], color='k', linestyle='-', alpha=1, label='Canadian Arctic')
-legend_lines = [mlines.Line2D([0], [0], color=color, linestyle='solid') for color in colours] #  dummy lines for legend purposes
+    """
+    Compute the weighted average of temperature anomalies for the regions and the warming trend
+    """
+    # compute the weighted average of temperate anomalies for the regions
+    temp_canada = weighted_avg(ann_mean_temp_anom, lat_bound_s=canada_south, lat_bound_n=canada_north, lon_bound_w=canada_west, lon_bound_e=canada_east)
+    temp_ca_arc = weighted_avg(ann_mean_temp_anom, lat_bound_s=ca_arc_south, lat_bound_n=ca_arc_north, lon_bound_w=ca_arc_west, lon_bound_e=ca_arc_east)
+    temp_glob = weighted_avg(ann_mean_temp_anom)
 
-#dataset_legend = ax1.legend(handles=[mlines.Line2D([], [], color=color, linestyle='-', label=label) for color, label in zip(colours, labels)], loc='upper left', fontsize=14)
-#region_legend = ax1.legend(handles=[global_legend, canada_legend, arctic_legend], loc='upper left', bbox_to_anchor=(0.24, 1), fontsize=14)
-#ax1.add_artist(dataset_legend)
-ax1.legend(handles=legend_lines, labels=labels, loc='upper left',fontsize=16)
-ax1.grid(True, linestyle='-') 
-ax1.set_ylabel('Temperature anomaly [°C]', fontsize=16) 
-ax1.set_xticks(np.arange(1950, 2021, 10))
-ax1.tick_params(axis='both', labelsize=16)
-ax1.set_xlim(1950, 2025)
+    # compute the warming trend for 1979-2023
+    canada_trend, canada_intercept, _ = perform_linear_regression(temp_canada.sel(time=slice(1979, 2023)).values)
+    y_fit_canada = np.arange(len(temp_canada.sel(time=slice(1979, 2023)))) * canada_trend + canada_intercept
 
-# b) BOTTOM LEFT PLOT: ARCTIC TREND
-print("Plotting subplot (b)...\n")
-obs_ave_trend_masked = xr.open_dataset('data/obs_ave_trendMasked.nc')
+    ca_arc_trend, ca_arc_intercept, _ = perform_linear_regression(temp_ca_arc.sel(time=slice(1979, 2023)).values)
+    y_fit_ca_arc = np.arange(len(temp_ca_arc.sel(time=slice(1979, 2023)))) * ca_arc_trend + ca_arc_intercept
 
-ax2 = fig.add_subplot(gs[1, 0], projection=ccrs.NorthPolarStereo(central_longitude=-100))
-# plot Arctic Temperature Trend using the average of four observational datasets
-plot_average_ArcticTrend(obs_ave_trend_masked, arctic_lower, ax=ax2)
+    glob_trend, glob_intercept, _ = perform_linear_regression(temp_glob.sel(time=slice(1979, 2023)).values) 
+    y_fit_glob = np.arange(len(temp_glob.sel(time=slice(1979, 2023)))) * glob_trend + glob_intercept
 
-# c) BOTTOM RIGHT: ARCTIC AMPLIFICATION
-print("Plotting subplot (c)...\n")
-obs_ave_aa = xr.open_dataset('data/obs_ave_aa.nc')
+    print(f"Canada warming trend for 1979-2023: {np.round(canada_trend, 3)}")
+    print(f"Canadian Arctic warming trend for 1979-2023: {np.round(ca_arc_trend, 3)}")
+    print(f"Global warming trend for 1979-2023: {np.round(glob_trend, 3)}")
 
-ax3 = fig.add_subplot(gs[1, 1], projection=ccrs.NorthPolarStereo(central_longitude=-100))
-# plot Arctic Amplification using the average of four observational datasets
-plot_average_AA(obs_ave_aa, arctic_lower, ax=ax3)
 
-# annotations
-ax1.text(0, 1.1, 'a)', transform=ax1.transAxes, fontsize=16, fontweight='bold', va='top', ha='right')
-ax2.text(0, 1.1, 'b)', transform=ax2.transAxes, fontsize=16, fontweight='bold', va='top', ha='right')
-ax3.text(0, 1.1, 'c)', transform=ax3.transAxes, fontsize=16, fontweight='bold', va='top', ha='right')
+    """
+    Figure1: time series plot of temperature anomalies for the global, Canada, and Canadian Arctic regions
+    """
+    plt.figure(figsize=(10, 6))
 
-plt.savefig('figures/obs_Canada_v1.png', dpi=300)
+    colours = {'canada': 'red', 'ca_arc': 'blue', 'global': 'gray'}
+
+    plt.plot(temp_canada.year, temp_ca_arc, colours['ca_arc'], alpha=1)
+    plt.plot(temp_canada.sel(time=slice(1979, 2023)).year, y_fit_canada, colours['ca_arc'], alpha=1)
+
+    plt.plot(temp_ca_arc.year, temp_ca_arc, colours['canada'], alpha=1)
+    plt.plot(temp_ca_arc.sel(time=slice(1979, 2023)).year, y_fit_ca_arc, colours['canada'], alpha=1)
+
+    plt.plot(temp_glob.year, temp_glob, colours['global'], alpha=0.5)
+    plt.plot(temp_glob.sel(time=slice(1979, 2023)).year, y_fit_glob, colours['global'], alpha=0.5)
+
+    plt.ylabel('Temperature Anomaly [°C]', fontsize=16)
+    plt.legend(loc='upper left', fontsize=14)
+    plt.grid(True, linestyle='-') 
+    plt.xticks(np.arange(1950, 2021, 10))
+    plt.tick_params(axis='both', labelsize=16)
+    plt.xlim(1950, 2025)
+
+    output_dir = home.joinpath("my_dir", "cccr/figures")
+    plt.savefig(f'{output_dir}/obs_time_series.png', dpi=300)
+
+
+    """
+    Compute Arctic temperature trend and amplification for each grid cell
+    """
+    # compute the slope (trend) and p-value for each grid cell for 1950-2023
+    trend_1950, p_value_1950 = apply_grid_cell_regression(ann_mean_temp_anom.sel(time=slice(1950, 2023)))
+    # mask trend values where p_value is not statistically significant
+    trend_1950_masked = trend_1950.where(p_value_1950 < 0.05, np.nan)
+
+    # repeat for 1979-2023
+    trend_1979, p_value_1979 = apply_grid_cell_regression(ann_mean_temp_anom.sel(time=slice(1979, 2023)))
+    trend_1979_masked = trend_1979.where(p_value_1979 < 0.05, np.nan)
+
+    # global trend for 1950-2023
+    glob_trend_1950, _, _ = perform_linear_regression(temp_glob.sel(time=slice(1979, 2023)).values) 
+
+    # compute amplification for each grid cell
+    amplification_1950 = trend_1950 / glob_trend_1950
+    amplification_1979 = trend_1979 / glob_trend 
+
+    """
+    Figure2: Polar map of Arctic temperature trend and amplification 
+    """
+
+    fig2 = plt.subplots(figsize=(10, 6))
+    gs = GridSpec(2, 2, figure=fig2, hspace=0.3, wspace=0.3)
+
+    # 1950-2023 temp trend (top left)
+    ax1 = fig2.add_subplot(gs[0, 0], projection=ccrs.NorthPolarStereo(central_longitude=-100))
+    plot_average_ArcticTrend(trend_1950_masked, lower_boundary=66.5, ax=ax1)
+
+    # 1950-2023 amplification (top right)
+    ax2 = fig2.add_subplot(gs[0, 1], projection=ccrs.NorthPolarStereo(central_longitude=-100))
+    plot_average_AA(amplification_1950, lower_boundary=66.5, ax=ax2)
+
+    # 1979-2023 temp trend (bottom left)
+    ax3 = fig2.add_subplot(gs[1, 0], projection=ccrs.NorthPolarStereo(central_longitude=-100))
+    plot_average_ArcticTrend(trend_1979_masked, lower_boundary=66.5, ax=ax3)
+
+    # 1979-2023 amplification (bottom right)
+    ax4 = fig2.add_subplot(gs[1, 1], projection=ccrs.NorthPolarStereo(central_longitude=-100))
+    plot_average_AA(amplification_1979, lower_boundary=66.5, ax=ax4)
+
+
+    ax1.text(0, 1.1, 'a)', transform=ax1.transAxes, fontsize=16, fontweight='bold', va='top', ha='right')
+    ax2.text(0, 1.1, 'b)', transform=ax2.transAxes, fontsize=16, fontweight='bold', va='top', ha='right')
+    ax3.text(0, 1.1, 'c)', transform=ax3.transAxes, fontsize=16, fontweight='bold', va='top', ha='right')
+    ax4.text(0, 1.1, 'd)', transform=ax4.transAxes, fontsize=16, fontweight='bold', va='top', ha='right')
+
+    plt.savefig(f'{output_dir}/obs_polar_maps.png', dpi=300)
+
+
+if __name__ == "__main__":
+    main()
