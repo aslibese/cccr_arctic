@@ -1,5 +1,12 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Name: Asli Bese
+
+"""
+Created on 04 Oct 2024
+
+This script contains the utility functions for plotting Arctic warming data.
+
+"""
 
 import numpy as np   
 import matplotlib.pyplot as plt  
@@ -8,10 +15,47 @@ from matplotlib.colors import ListedColormap
 import cartopy.crs as ccrs # crs: coordinate reference system
 from cartopy.util import add_cyclic_point
 
-from Canada.plottingToolsCanada import plot_background
 
-# function to plot the Arctic temperature trend as a polar map
+
+def plot_background(ax, lower_boundary):    
+	"""
+    Function to create a customized background plot.
+    """
+	# set the background colour of the plot area to white 
+	ax.patch.set_facecolor('w')
+	# change the border of the plot to black 
+	ax.spines['geo'].set_edgecolor('k')
+
+	# set the geographical extent of the plot to cover lon from -180 to 180
+	# and lat from 50 to 90
+	# plate carrée map projection is an equidistant cylindrical projection with the standard parallel located at the equator
+	ax.set_extent([-180, 180, 50, 90], crs=ccrs.PlateCarree())
+	# add coastline features with a scale of '110m'; zorder=10 ensures that coastlines are drawn above other layers
+	ax.add_feature(cfeature.COASTLINE.with_scale('110m'), zorder=10)
+
+	# add gridlines to show the Arctic boundary
+	gl = ax.gridlines(linewidth=2, color='k', alpha=0.5, linestyle='--')
+	gl.n_steps = 100 
+	# set the Arctic lower boundary based on the argument
+	gl.ylocator = mticker.FixedLocator([float(lower_boundary)])
+	gl.xlocator = mticker.FixedLocator([])
+	
+	theta = np.linspace(0, 2*np.pi, 100)
+	center, radius = [0.5, 0.5], 0.5
+
+	# construct a 'Path' object with the vertices of the circle set this path as the boundary of the plot
+	# to focus on the Arctic region
+	verts = np.vstack([np.sin(theta), np.cos(theta)]).T
+	circle = mpath.Path(verts * radius + center)
+
+	ax.set_boundary(circle, transform=ax.transAxes)
+	return ax
+
+
 def plot_average_ArcticTrend(ds, lower_boundary, add_colorbar=True, ax=None):
+	"""
+    Function to plot the Arctic temperature trend as a polar map.
+    """
 	# set up colour range and levels for the countour plot 
 	cmin = -1.5 # min countour level (min value of the temperature anomaly trends to display)
 	cmax = 1.5 # max countour level
@@ -38,8 +82,10 @@ def plot_average_ArcticTrend(ds, lower_boundary, add_colorbar=True, ax=None):
 	cbar.set_ticks(labels)
 	
    
-# function to plot the Arctic Amplification (AA) as a polar map
 def plot_average_AA(ds, lower_boundary, ax=None):
+	"""
+    Function to plot the Arctic Amplification (AA) as a polar map.
+    """
 	# generate base colourmaps
 	Reds = cm.get_cmap('Reds', 12) # make 12 discrete shades of red 
 	Blues = cm.get_cmap('Blues', 10) # make 10 discrete shades of blue
