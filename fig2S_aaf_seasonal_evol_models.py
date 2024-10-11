@@ -18,7 +18,7 @@ from pathlib import Path
 
 
 home = Path("~").expanduser() 
-in_file = home.joinpath("data_dir", "CMIP6/cccr_arctic/tas_cmip6_month_v4.nc")
+in_file = home.joinpath("data_dir", "CMIP6/cccr_arctic/tas_cmip6_month_v4_regridded.nc")
 ds = xr.open_dataset(in_file)
 
 
@@ -103,6 +103,6 @@ cbar.ax.tick_params(labelsize=10)
 
 plt.tight_layout(rect=[0, 0, 0.90, 1])  # leave space for colorbar
 
-output_file = home.joinpath("my_dir", "cccr_arctic/figures/aaf_seasonal_evol_models_v2.png")
+output_file = home.joinpath("my_dir", "cccr_arctic/figures/aaf_seasonal_evol_models_regridded.png")
 plt.savefig(output_file)
 print(f'Plot saved to: {output_file}')
