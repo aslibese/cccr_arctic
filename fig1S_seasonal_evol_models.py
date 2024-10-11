@@ -1,8 +1,26 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+Created on 06 Oct 2024
+
+This script generates a plot for the seasonal evolution of the temperature anomaly in the Canadian Arctic region for each CMIP6 and the multi-model mean.
+
+Code adapted from: https://doi.org/10.5281/zenodo.6965473
+
+author: @aslibese
+"""
+
+
 import numpy as np
 import xarray as xr
 import matplotlib.pyplot as plt
+from pathlib import Path
 
-ds = xr.open_dataset('/export/data/CMIP6/cccr_arctic/tas_cmip6_month_v3.nc')
+
+home = Path("~").expanduser() 
+in_file = home.joinpath("data_dir", "CMIP6/cccr_arctic/tas_cmip6_month_v3.nc")
+ds = xr.open_dataset(in_file)
 
 MMM_tarctic = ds['MMM_tarctic']  # dimensions: (month, year)
 tarctic_moving_diff = ds['tarctic_moving_diff']  # (model, month, year)
@@ -84,8 +102,8 @@ cbar = fig.colorbar(cf, cax=cbar_ax, orientation='vertical', ticks=levels)
 cbar.set_label('Temperature Anomaly (K)', fontsize=12)
 cbar.ax.tick_params(labelsize=10)
 
-
 plt.tight_layout(rect=[0, 0, 0.90, 1])  # leave space for colorbar
-output_file = '/home/abese/arcticProject/cccr_arctic/figures/tas_seasonal_evol_models.png'
+
+output_file = home.joinpath("my_dir", "cccr_arctic/figures/tas_seasonal_evol_models.png")
 plt.savefig(output_file)
 print(f'Plot saved to: {output_file}')
