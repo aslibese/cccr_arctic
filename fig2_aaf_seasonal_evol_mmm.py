@@ -4,7 +4,7 @@
 """
 Created on 06 Oct 2024
 
-This script generates a plot for the seasonal evolution of the the multi-model mean Arctic Amplification Factor (AAF) in the Canadian Arctic region.
+This script generates a plot for the seasonal evolution of the multi-model mean Arctic Amplification Factor (AAF) in the Canadian Arctic region.
 
 Code adapted from: https://doi.org/10.5281/zenodo.6965473
 
