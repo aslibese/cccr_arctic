@@ -14,7 +14,10 @@ from matplotlib import cm
 from matplotlib.colors import ListedColormap
 import cartopy.crs as ccrs # crs: coordinate reference system
 from cartopy.util import add_cyclic_point
-
+import matplotlib.path as mpath    
+import matplotlib.ticker as mticker
+import cartopy.feature as cfeature
+import cartopy.crs as ccrs # crs: coordinate reference system
 
 
 def plot_background(ax, lower_boundary):    
@@ -52,7 +55,7 @@ def plot_background(ax, lower_boundary):
 	return ax
 
 
-def plot_average_ArcticTrend(ds, lower_boundary, add_colorbar=True, ax=None):
+def plot_average_ArcticTrend(da, lower_boundary, add_colorbar=True, ax=None):
 	"""
     Function to plot the Arctic temperature trend as a polar map.
     """
@@ -68,21 +71,22 @@ def plot_average_ArcticTrend(ds, lower_boundary, add_colorbar=True, ax=None):
 
 	# use add_cyclic_point to avoid a gap at the longtitude seam
 	# ds['slope']*10 to convert per-year trend to per-decade 
-	data_cyclic_point, cyclic_lon = add_cyclic_point(ds['slope']*10, coord=ds['lon'])
+	data_cyclic_point, cyclic_lon = add_cyclic_point(da*10, coord=da['lon'])
 
 	# create filled contour plot 
-	filled_contourf = ax.contourf(cyclic_lon, ds['lat'], data_cyclic_point, levels=c_levels, 
+	filled_contourf = ax.contourf(cyclic_lon, da['lat'], data_cyclic_point, levels=c_levels, 
 		zorder=2, extend='both', # add arrow extentions on both ends of the colourbar to handle values outside of the specificied range
 		cmap=trend_cmap, transform=ccrs.PlateCarree())
 
-	cbar = plt.colorbar(filled_contourf, orientation='horizontal', pad=0.05, fraction=0.05)
-	cbar.ax.tick_params(labelsize=14)
-	cbar.set_label(label='Temperature trend [°C decade⁻¹]', fontsize=16)
-	labels = np.arange(cmin, cmax + incr, incr * 3)
-	cbar.set_ticks(labels)
+	if add_colorbar:
+		cbar = plt.colorbar(filled_contourf, orientation='horizontal', pad=0.1, fraction=0.07)
+		cbar.ax.tick_params(labelsize=12)
+		cbar.set_label(label='Temperature trend [°C decade⁻¹]', fontsize=16)
+		labels = np.arange(cmin, cmax + incr, incr * 3)
+		cbar.set_ticks(labels)
 	
    
-def plot_average_AA(ds, lower_boundary, ax=None):
+def plot_average_AA(da, lower_boundary, add_colorbar=True, ax=None):
 	"""
     Function to plot the Arctic Amplification (AA) as a polar map.
     """
@@ -117,14 +121,15 @@ def plot_average_AA(ds, lower_boundary, ax=None):
 	plot_background(ax, lower_boundary)
 
 	# use add_cyclic_point to avoid a gap at the longtitude seam
-	data_cyclic_point, cyclic_lon = add_cyclic_point(ds['amplification'], coord=ds['lon'])
+	data_cyclic_point, cyclic_lon = add_cyclic_point(da, coord=da['lon'])
 
 	# create filled contourmap
-	filled_contourf = ax.contourf(cyclic_lon, ds['lat'], data_cyclic_point, levels=c_levels, zorder=2, 
+	filled_contourf = ax.contourf(cyclic_lon, da['lat'], data_cyclic_point, levels=c_levels, zorder=2, 
 		extend = 'both', cmap=new_colourmap, transform=ccrs.PlateCarree())
 
-	cbar = plt.colorbar(filled_contourf, orientation='horizontal', pad=0.05, fraction=0.05)
-	cbar.ax.tick_params(labelsize=14)
-	cbar.set_label(label='Local amplification', fontsize=16)
-	labels = np.arange(cmin, cmax + incr, 1)
-	cbar.set_ticks(labels)
+	if add_colorbar:
+		cbar = plt.colorbar(filled_contourf, orientation='horizontal', pad=0.1, fraction=0.07)
+		cbar.ax.tick_params(labelsize=12)
+		cbar.set_label(label='Local amplification', fontsize=16)
+		labels = np.arange(cmin, cmax + incr, 1)
+		cbar.set_ticks(labels)
