@@ -6,6 +6,9 @@ Created on 04 Oct 2024
 
 This script contains the utility functions for plotting Arctic warming data.
 
+Code adapted from: https://github.com/mikarant/arctic-amplification
+
+author: @aslibese
 """
 
 import numpy as np   
