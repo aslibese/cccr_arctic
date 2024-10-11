@@ -197,7 +197,7 @@ def main():
 
     # 1x1 degree grid
     lat = np.arange(-89.5, 90.5, 1)  
-    lon = np.arange(-179.5, 180.5, 1) 
+    lon = np.arange(0.5, 360.5, 1) 
     ds_tgt = xr.Dataset(
         coords={
             'lat': (['lat'], lat),
@@ -211,8 +211,8 @@ def main():
     historical_dir = home.joinpath("data_dir", "CMIP6/cccr_arctic/historical/tas_Amon")
     ssp245_dir = home.joinpath("data_dir", "CMIP6/cccr_arctic/ssp245/tas_Amon")
 
-    historical_files = sorted(glob.glob(os.path.join(historical_dir, '*.nc')))
-    ssp_files = sorted(glob.glob(os.path.join(ssp245_dir, '*.nc')))
+    historical_files = sorted(glob.glob(os.path.join(historical_dir, '*tas_Amon*.nc')))
+    ssp_files = sorted(glob.glob(os.path.join(ssp245_dir, '*tas_Amon*.nc')))
 
     model_names = []
     for f in historical_files:
@@ -284,10 +284,16 @@ def main():
 
             print(f"Sliced time for model {model}: {ds['time'].values}")
 
+            # convert to 0 to 360 format
+            if ds['lon'].min() < 0:
+                print("Adjusting longitudes to 0-360 format...")
+                ds['lon'] = ((ds['lon'] + 360) % 360)
+
             # regrid to 1x1 resolution using xscen
             weights_location = home.joinpath("my_dir", "cccr_arctic/weights")
             ds_regridded = xscen.regrid.regrid_dataset(ds, ds_tgt, regridder_kwargs={"method": "conservative_normed", "skipna": True}, weights_location=weights_location)
             print(f"Regridding for model {model} completed.")  
+
 
             weighted_data_region, weighted_data_global = area_averaged_tas(ds_regridded)
 
@@ -367,7 +373,7 @@ def main():
         'MMM_aaf': MMM_aaf
     })
 
-    output_filename = home.joinpath("data_dir", "CMIP6/cccr_arctic/tas_cmip6_month_v4.nc")
+    output_filename = home.joinpath("data_dir", "CMIP6/cccr_arctic/tas_cmip6_month_v3_regridded.nc")
     output_ds.to_netcdf(output_filename)
     print('\nOutput saved to', output_filename)
 
