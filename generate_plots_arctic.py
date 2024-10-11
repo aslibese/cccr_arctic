@@ -7,6 +7,7 @@ Created on 04 Oct 2024
 This script generates plots for the temperature trend and amplification for Canada, Canadian Arctic, and the global region 
 using the average of four observational datasets.
 
+author: @aslibese
 """
 
 from util_arctic import fix_coords, weighted_avg, perform_linear_regression, apply_grid_cell_regression
