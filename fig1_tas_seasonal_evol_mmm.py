@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 
 home = Path("~").expanduser() 
-in_file = home.joinpath("data_dir", "CMIP6/cccr_arctic/tas_cmip6_month_v3.nc")
+in_file = home.joinpath("data_dir", "CMIP6/cccr_arctic/tas_cmip6_month_v4.nc")
 ds = xr.open_dataset(in_file)
 
 MMM_tarctic = ds['MMM_tarctic']  # dimensions: (month, year)
@@ -73,7 +73,7 @@ cbar.ax.tick_params(labelsize=12)
 
 plt.tight_layout()
 
-output_file = home.joinpath("my_dir", "cccr_arctic/figures/tas_seasonal_evol_MMM.png")
+output_file = home.joinpath("my_dir", "cccr_arctic/figures/tas_seasonal_evol_MMM_v2.png")
 plt.savefig(output_file)
 print(f'Plot saved to: {output_file}')
 
