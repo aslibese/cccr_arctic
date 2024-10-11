@@ -1,3 +1,16 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+Created on 06 Oct 2024
+
+This script calculates the 2m air temperature (TAS) anomalies and Arctic Amplification Factor (AAF) using CMIP6 models for the Canadian Arctic region.
+
+Code adapted from: https://doi.org/10.5281/zenodo.6965473
+
+author: @aslibese
+"""
+
 import numpy as np
 import math as m
 import pandas as pd
@@ -6,6 +19,7 @@ import glob
 import xarray as xr
 import os
 import cftime
+from pathlib import Path
 
 print('\n--------------------------------------------------------------------------')
 print('TAS and AAF calculating using CMIP6 models for the Canadian Arctic')
@@ -180,9 +194,9 @@ def main():
     run_num = 30
     year_interval = [1951, 2100]
 
-
-    historical_dir = '/export/data/CMIP6/cccr_arctic/historical'
-    ssp245_dir = '/export/data/CMIP6/cccr_arctic/ssp245'
+    home = Path("~").expanduser()
+    historical_dir = home.joinpath("data_dir", "CMIP6/cccr_arctic/historical")
+    ssp245_dir = home.joinpath("data_dir", "CMIP6/cccr_arctic/ssp245")
 
     historical_files = sorted(glob.glob(os.path.join(historical_dir, '*.nc')))
     ssp_files = sorted(glob.glob(os.path.join(ssp245_dir, '*.nc')))
@@ -221,8 +235,8 @@ def main():
         start_date = pd.to_datetime('1900-01-01')
         end_date = pd.to_datetime('2100-12-31')
 
+        # slice the dataset to the specified time period handing different time formats
         try:
-            # handle different time formats
             if isinstance(ds['time'].values[0], cftime.datetime): # 2000-01-01 12:00:00
                 # convert start and end dates to cftime objects for the dataset's calendar
                 start_date = ds['time'].values[0].__class__(1900, 1, 1)
@@ -335,9 +349,7 @@ def main():
         'MMM_aaf': MMM_aaf
     })
 
-
-
-    output_filename = '/export/data/CMIP6/cccr_arctic/tas_cmip6_month_v3.nc'
+    output_filename = home.joinpath("data_dir", "CMIP6/cccr_arctic/tas_cmip6_month_v3.nc")
     output_ds.to_netcdf(output_filename)
     print('\nOutput saved to', output_filename)
 
