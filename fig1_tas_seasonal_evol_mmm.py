@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 
 home = Path("~").expanduser() 
-in_file = home.joinpath("data_dir", "CMIP6/cccr_arctic/tas_cmip6_month_v4_regridded.nc")
+in_file = home.joinpath("data_dir", "CMIP6/cccr_arctic/tas_cmip6_month_v3_regridded.nc")
 ds = xr.open_dataset(in_file)
 
 MMM_tarctic = ds['MMM_tarctic']  # dimensions: (month, year)
