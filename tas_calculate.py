@@ -209,10 +209,10 @@ def main():
 
     home = Path("~").expanduser()
     historical_dir = home.joinpath("data_dir", "CMIP6/cccr_arctic/historical/tas_Amon")
-    ssp245_dir = home.joinpath("data_dir", "CMIP6/cccr_arctic/ssp245/tas_Amon")
+    ssp_dir = home.joinpath("data_dir", "CMIP6/cccr_arctic/ssp370/tas_Amon")
 
     historical_files = sorted(glob.glob(os.path.join(historical_dir, '*tas_Amon*.nc')))
-    ssp_files = sorted(glob.glob(os.path.join(ssp245_dir, '*tas_Amon*.nc')))
+    ssp_files = sorted(glob.glob(os.path.join(ssp_dir, '*tas_Amon*.nc')))
 
     model_names = []
     for f in historical_files:
@@ -231,13 +231,20 @@ def main():
 
     for model in model_names:
         hist_files = glob.glob(os.path.join(historical_dir, '*_%s_*.nc' % model))
-        ssp_files = glob.glob(os.path.join(ssp245_dir, '*_%s_*.nc' % model))
+        ssp_files = glob.glob(os.path.join(ssp_dir, '*_%s_*.nc' % model))
+
+        if not hist_files:
+            print(f"No historical files found for model: {model}")
+            return # exit the function 
+        if not ssp_files:
+            print(f"No SSP files found for model: {model}")
+            return
 
         print('\nProcessing model:', model)
         ds_hist = xr.open_dataset(hist_files[0])
         ds_ssp = xr.open_dataset(ssp_files[0])
 
-        # concatenate hist and ssp245 datasets along time dimension
+        # concatenate hist and ssp datasets along time dimension
         ds = xr.concat([ds_hist, ds_ssp], dim='time')
 
         # identify the time type
@@ -245,14 +252,14 @@ def main():
         print(f"Time type for model {model}: {time_type}")
 
         # set start and end dates to slice
-        start_date = pd.to_datetime('1900-01-01')
+        start_date = pd.to_datetime('1940-01-01')
         end_date = pd.to_datetime('2100-12-31')
 
         # slice the dataset to the specified time period handing different time formats
         try:
             if isinstance(ds['time'].values[0], cftime.datetime): # 2000-01-01 12:00:00
                 # convert start and end dates to cftime objects for the dataset's calendar
-                start_date = ds['time'].values[0].__class__(1900, 1, 1)
+                start_date = ds['time'].values[0].__class__(1940, 1, 1)
                 end_date = ds['time'].values[0].__class__(2100, 12, 31)
 
                 print("Converting time to CFTimeIndex...")
@@ -373,7 +380,7 @@ def main():
         'MMM_aaf': MMM_aaf
     })
 
-    output_filename = home.joinpath("data_dir", "CMIP6/cccr_arctic/tas_cmip6_month_v3_regridded.nc")
+    output_filename = home.joinpath("data_dir", "CMIP6/cccr_arctic/tas_cmip6_month_ssp370_regridded.nc")
     output_ds.to_netcdf(output_filename)
     print('\nOutput saved to', output_filename)
 
