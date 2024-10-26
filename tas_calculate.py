@@ -235,10 +235,10 @@ def main():
 
         if not hist_files:
             print(f"No historical files found for model: {model}")
-            return # exit the function 
+            continue # skip to the next model 
         if not ssp_files:
             print(f"No SSP files found for model: {model}")
-            return
+            continue
 
         print('\nProcessing model:', model)
         ds_hist = xr.open_dataset(hist_files[0])
